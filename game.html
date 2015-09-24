@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title> Classic Arcade Game</title>
+	<script type="text/javascript">
+		var canvas;
+		var canvasContext;
+		var ballX = 50; // variable to store x position of the ball by which it is moving in every frame. eg . 50 + 10, 60 + 10, 70 + 10
+		var ballY = 100;
+		var ballSpeedX = 10;  // var to store the amount by how much a ball will move in next frame.
+		var ballSpeedY = 4;
+		var ballRadius = 10;
+
+		var player1Score = 0;
+		var player2Score = 0;
+		var WINNING_SCORE = 4;
+		var showingWinScreen = false;
+
+		var paddle1Y = 250;
+		var paddle2Y = 250;
+		const PADDLE_HEIGHT = 100;
+		const PADDLE_WIDTH = 10;
+
+		window.onload = function()
+		{
+			canvas = document.getElementById('gameCanvas');
+			canvasContext = canvas.getContext('2d');
+
+			var framesPerSecond = 30;
+			setInterval(function(){
+				moveEverything();
+				drawEverything();
+			}, 1000/framesPerSecond);
+
+			canvas.addEventListener('mousedown', handleMouseClick);
+
+			canvas.addEventListener('mousemove', function(evt) {
+
+				var mousePos = calculateMousePos(evt);
+
+				// Making mouse position align with paddle centre position.
+				//Basically now the mouse is holding the center of paddle instead of holding from the top.
+				paddle1Y = mousePos.y - (PADDLE_HEIGHT/2);
+			});
+		}
+
+		function moveEverything()
+		{
+			// Just return from the function if either party wins the game.
+			if(showingWinScreen)
+			{
+				return;
+			}
+
+			//Player2 movement
+			computerMovement();
+
+			// For Smooth movement of the ball.
+			ballX += ballSpeedX;
+			ballY += ballSpeedY;
+
+			//If ball touches either boundaries change the direction. Horizontal direction 
+			if (ballX >= canvas.width)
+			{
+				if(ballY > paddle2Y && ballY < (paddle2Y + PADDLE_HEIGHT))
+				{
+					ballSpeedX = -ballSpeedX;
+					var delta = ballY - (paddle2Y + PADDLE_HEIGHT/2);
+					ballSpeedY = delta * .35;					
+				}
+				else
+				{
+					player1Score ++; //Must be before ball RESET();
+					// As the ball touches the left boundary, reset it.
+					ballReset();
+				}
+			}
+			else if (ballX < 0)
+			{
+				// If ball collides with paddle just change the direction, no need to reset it.
+
+					//  _Paddle1Y
+					// | 
+					// |Ball within paddle
+					// |
+					// |
+					// |_Paddle1Y + PADDLE_HEIGHT
+
+				if(ballY > paddle1Y && ballY < (paddle1Y + PADDLE_HEIGHT))
+				{
+					ballSpeedX = -ballSpeedX;
+					var delta = ballY - (paddle1Y + PADDLE_HEIGHT/2);
+					ballSpeedY = delta * .35;
+
+				}
+				else
+				{
+					
+					player2Score ++; //Must be before ball RESET();
+					// As the ball touches the left boundary, reset it.
+					ballReset();
+				}
+			}
+				
+			//If ball touches either boundaries change the direction. verticle direction
+			if (ballY >= canvas.height)
+				ballSpeedY = -ballSpeedY;
+			else if (ballY < 0)
+				ballSpeedY = -ballSpeedY;
+		}
+
+		function drawNet()
+		{
+			for (var i=6; i<canvas.height; i+=40)
+			{
+				colorRect( canvas.width/2-1, i, 2, 20, 'white');
+			}
+		}
+
+		function drawEverything()
+		{
+			// Background Screen
+			colorRect(0, 0, canvas.width, canvas.height, 'black');
+
+			if (showingWinScreen)
+			{
+				canvasContext.fillStyle = 'white';
+				if (player1Score >= WINNING_SCORE)
+				{
+					canvasContext.fillText("You won!", 350, 350);
+				}
+				else if (player2Score >= WINNING_SCORE) 
+				{
+					canvasContext.fillText("Sorry you lost!", 320, 350);
+				}
+				canvasContext.fillText("Click to Play again", 300, 400);
+				canvasContext.font="20px Verdana";
+				return;
+			}
+
+			drawNet();
+
+			// Left Paddle1 player
+			colorRect(0,paddle1Y, PADDLE_WIDTH, PADDLE_HEIGHT, 'white');
+			
+			// Right computer Paddle2 player
+			colorRect(canvas.width - PADDLE_WIDTH,paddle2Y, PADDLE_WIDTH, PADDLE_HEIGHT, 'white');
+
+			// canvasContext.beginPath();
+			// canvasContext.moveTo(200, canvas.height / 2);
+			// canvasContext.lineTo(canvas.width - 200, canvas.height / 2);
+			// canvasContext.lineWidth = 20;
+			// canvasContext.strokeStyle = '#0000ff';
+			// canvasContext.lineCap = 'round';
+			// canvasContext.stroke();
+			
+			// Ball
+			colorCircle(ballX, ballY, ballRadius,'white');
+
+			// Score
+			canvasContext.fillText("Score", 100, 100);
+			canvasContext.font="20px Verdana";
+
+			canvasContext.fillText("Score", canvas.width-100, 100);
+			canvasContext.font="20px Verdana";
+
+			canvasContext.fillText(player1Score, 120, 140);
+			canvasContext.fillText(player2Score, canvas.width-120, 140);
+		}
+
+		function handleMouseClick(evt)
+		{
+			if (showingWinScreen)
+			{
+				player1Score = 0;
+				player2Score = 0;
+				showingWinScreen = false;
+			}
+		}
+
+		function calculateMousePos(evt)
+		{
+			//getting the rect handle
+			var rect = canvas.getBoundingClientRect();
+
+			// getting html page handle or dom handle
+			var root = document.documentElement;
+
+			//Mouse Position
+			var mouseX = evt.clientX - rect.left - root.scrollLeft;
+			var mouseY = evt.clientY - rect.top - root.scrollTop;
+
+			return {
+				x:mouseX,
+				y:mouseY
+			};
+		}
+
+		function ballReset()
+		{
+			if (player1Score >= WINNING_SCORE || player2Score >= WINNING_SCORE)
+			{
+				showingWinScreen = true;
+			}
+
+			// while resetting, change the direction of the ball.
+			ballSpeedX = -ballSpeedX;
+
+			// Starts from the middle of the canvas and that too in opposite direction.
+			ballX = canvas.width/2;
+			ballY = canvas.height/2;
+		}
+
+		function computerMovement()
+		{
+			// line up the ball with paddle2Y center (not top)
+			var paddle2YCenter = paddle2Y + (PADDLE_HEIGHT/2);
+
+			// If the ball position is above the paddle position then move paddle in upward direction tto catch the ball
+			// Put some margin e.g. 35 to stop the ball from shaking. So stop the ball whenever it comes to 70 span paddle.
+			if(ballY < paddle2YCenter - 35)
+			{
+				paddle2Y -= 5;
+			}
+			// otherwise move the paddle down.
+			else if (ballY > paddle2YCenter + 35)
+			{
+				paddle2Y += 5;
+			}
+		}
+
+
+		function colorCircle(centerX, centerY, radius, drawColor)
+		{
+			canvasContext.fillStyle = drawColor;
+			canvasContext.beginPath();
+			canvasContext.arc(centerX, centerY, radius, 0, Math.PI*2, true);
+			canvasContext.fill();
+		}
+
+		function colorRect(x, y, width, height, color)
+		{
+			canvasContext.fillStyle = color;
+			canvasContext.fillRect(x, y, width, height);
+		}
+
+	</script>
+</head>
+<body>
+	<canvas id='gameCanvas' width ="800" height="600" style="border-radius:2px;"></canvas>
+</body>
+</html>
